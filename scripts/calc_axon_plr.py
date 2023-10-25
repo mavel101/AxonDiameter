@@ -15,7 +15,13 @@ path_data = ["../data/study/subject7/session1/spiral_mag_mle/",
              "../data/study/subject7/session2/spiral_mag_mle/"]
 mid = ["159","189"]
 
-g_fac = [1, 1.08] # factor by which the gradient of the higher b-value is multiplied
+# multiplicative/additive factors for gradient or b-values [session1, session2]
+g_fac = [1, 1]
+g_add = [0, 0]
+b_fac = [1, 1]
+b_add = [0, 0]
+
+apply_both = False # apply on both gradients/b-values, if False only apply on higher gradient/b-value
 
 t1 = "../data/study/subject7/session1/t1/S3_t1w_mprage_anat_t1w_mprage_anat_20230417120015_3_bet.nii.gz"
 wm_mask = "../data/study/subject7/session1/t1/S3_t1w_mprage_anat_t1w_mprage_anat_20230417120015_3_bet_seg.nii.gz"
@@ -28,18 +34,29 @@ for k,path in enumerate(path_data):
 
     g1 = nib.load(path+"grads_6000.nii").get_fdata()
     g2 = nib.load(path+"grads_30000.nii").get_fdata()
+    g = np.stack([g1,g2])
 
-    # Apply factor on g2
-    # g1 *= g_fac[k]
-    g2 *= g_fac[k]
-
-    g = np.stack([g1,g2])*1e-3 # T/m
+    # Apply factors on g
+    if apply_both:
+        g[0] += g_add[k]
+        g[0] *= g_fac[k]
+    g[1] += g_add[k]
+    g[1] *= g_fac[k]
+    
+    # mT/m to T/m
+    g *= 1e-3
 
     # Calculate diffusion parameters
     delta = 15e-3 # s
     Delta = 29.25e-3 # s
     gamma = 42.57e6*2*np.pi # rad*/(T*s)
     b = 1e-6*(gamma*g*delta)**2*(Delta - delta/3) # s/mm²
+
+    if apply_both:
+        b[0] += b_add[k]
+        b[0] *= b_fac[k]
+    b[1] += b_add[k]
+    b[1] *= b_fac[k]
 
     # radial diffusivity from equation 11 of Pizzolato paper
     log = np.divide(sh[0],sh[1],out=np.zeros_like(sh[0]),where=sh[1]>0) * np.sqrt(b[0]/b[1])
