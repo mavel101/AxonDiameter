@@ -15,7 +15,7 @@ A working docker container containing all software dependencies listed below and
 ```
 docker pull mavel101/axon_mapping
 ```
-The docker container requires both a valid Matlab license (incl. Image Processing toolbox) and the Nvidia container toolkit for GPU usage. The container can be started by running:
+The docker container requires both a valid Matlab license (incl. Image Processing & Parallel Computing toolbox) and the Nvidia container toolkit for GPU usage. The container can be started by running:
 ```
 docker run -it --rm --gpus all -v /path/to/matlab/license/file:/licenses/license.lic -e MLM_LICENSE_FILE=/licenses/license.lic mavel101/axon_mapping bash
 ```
@@ -26,6 +26,7 @@ cd ~/AxonDiameter
 ```
 The example pipeline does not include the gradient unwarping (step 6) as a proprietary file is needed. Instead the already processed data is found in the data folder ("~/AxonDiameter/data") of the container. Also T1 brain extraction is omitted, as the example data is already brain extracted due to anonomization purposes.
 
+The main processing pipeline is implemented in two shell scripts for spiral and EPI data:
 - Processing for spiral data can be started running scripts/process_spiral.sh #IN_FILE.  
 - Processing for EPI data can be started running scripts/process_epi.sh #IN_FILE #IN_FILE_PA.  
 - With option "-t" a T1 image can be provided to do white matter segmentation and along-tract evaluation of the axon diameter.  
@@ -70,10 +71,10 @@ Before processing EPI data, the b-vectors should be corrected with the submodule
 ## Requirements
 
 - MRtrix3 (needs up to commit 3853c58 from https://github.com/lukeje/mrtrix3, that fixes a bug in the Rician bias correction)
-- FSL v6 (older version might work)
+- FSL v6.0.7.3 (older version might work)
 - gradunwarp (included submodule)
 - AxonRadiusMapping (included submodule)
-- Python (incl. Numpy, Nibabel 3.2.2 (< version 4))
+- Python 3.8 (incl. Numpy, Nibabel 3.2.2 (< version 4))
 - Matlab R2019b
 - Antspy v0.3.8
 - Antspynet v0.2.3

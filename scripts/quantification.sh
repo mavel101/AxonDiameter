@@ -14,6 +14,7 @@ fi
 IN_FILE_PREFIX=${IN_FILE%%.*}
 IN_FILE_PATH=$(dirname $IN_FILE)
 T1_FILE_PREFIX=${T1_FILE%%.*}
+T1_FILE_PATH=$(dirname $T1_FILE)
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 # Create white matter mask from T1 data
@@ -24,18 +25,23 @@ else
     python "${SCRIPTPATH}/t1_processing.py" -m $T1_FILE "${T1_FILE_PREFIX}_bet"
 
     # Create white matter mask from T1 data
-    fast -N "${T1_FILE_PREFIX}_bet.nii.gz"
+    fast "${T1_FILE_PREFIX}_bet.nii.gz"
     fslmaths "${T1_FILE_PREFIX}_bet_pve_2.nii.gz" -thr 0.85 -bin "${T1_FILE_PREFIX}_bet_seg.nii.gz"
+    # python ${SCRIPTPATH}/erode_mask.py "${T1_FILE_PREFIX}_bet_seg.nii.gz" "${T1_FILE_PREFIX}_bet_seg_eroded.nii.gz"
 fi
 
+# Create CC masks from T1 data
+python ${SCRIPTPATH}/cc_masks.py "${T1_FILE_PREFIX}_bet.nii.gz"
+
 # Register mean b0 to MPRAGE using the epi_reg script
-epi_reg --epi="${IN_FILE_PREFIX}_moco_unwarped_meanb0_bet.nii.gz" --t1=$T1_FILE --t1brain="${T1_FILE_PREFIX}_bet.nii.gz" --wmseg="${T1_FILE_PREFIX}_bet_seg.nii.gz" --out="${IN_FILE_PREFIX}_moco_unwarped_meanb0_bet_reg.nii.gz"
+epi_reg --epi="${IN_FILE_PREFIX}_moco_unwarped_meanb0_bet.nii.gz" --t1=$T1_FILE --t1brain="${T1_FILE_PREFIX}_bet.nii.gz" --wmseg="${T1_FILE_PREFIX}_bet_seg.nii.gz" --out="${IN_FILE_PREFIX}_moco_unwarped_bet_meanb0_reg.nii.gz"
 
 # Apply registration on axon radius maps
-flirt -in "${IN_FILE_PATH}/AxonRadiusMap.nii" -ref "${T1_FILE_PREFIX}_bet.nii.gz" -out "${IN_FILE_PATH}/AxonRadiusMap_reg.nii.gz" -applyxfm -init "${IN_FILE_PREFIX}_moco_unwarped_meanb0_bet_reg.mat"
+flirt -in "${IN_FILE_PATH}/AxonRadiusMap.nii" -ref "${T1_FILE_PREFIX}_bet.nii.gz" -out "${IN_FILE_PATH}/AxonRadiusMap_reg.nii.gz" -applyxfm -init "${IN_FILE_PREFIX}_moco_unwarped_bet_meanb0_reg.mat"
 
-# Apply white matter mask on axon radius maps
+# Apply white matter & CC masks on axon radius maps
 fslmaths "${IN_FILE_PATH}/AxonRadiusMap_reg.nii.gz" -mul "${T1_FILE_PREFIX}_bet_seg.nii.gz" "${IN_FILE_PATH}/AxonRadiusMap_wm.nii.gz"
+fslmaths "${IN_FILE_PATH}/AxonRadiusMap_reg.nii.gz" -mul "${T1_FILE_PATH}/cc_mask_bin.nii.gz" "${IN_FILE_PATH}/AxonRadiusMap_cc.nii.gz"
 
 # Calculate relative SNR maps
 ${SCRIPTPATH}/relative_snr.sh "${IN_FILE_PREFIX}_moco_unwarped_bet.nii.gz" "${IN_FILE_PREFIX}_sh_b6000_powderavg.nii.gz" "${IN_FILE_PREFIX}_sh_b30000_powderavg.nii.gz" "${IN_FILE_PREFIX}_noise_map.nii.gz" "${T1_FILE_PREFIX}_bet.nii.gz"
